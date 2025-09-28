@@ -10,8 +10,8 @@ local Window = Rayfield:CreateWindow({
       FileName = "Example Hub"
    },
    Discord = {
-      Enabled = false,
-      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
+      Enabled = True,
+      Invite = "Qmt9zcQzG", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
       RememberJoins = true -- Set this to false to make them join the discord every time they load it up
    },
    KeySystem = False, -- Set this to true to use our key system
@@ -47,7 +47,7 @@ Rayfield:Notify({
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
  
 local Window = Rayfield:CreateWindow({
-   Name = "Demonfall made by GLU",
+   Name = "Demonfall made by Glu",
    LoadingTitle = "Glu is GOATED",
    LoadingSubtitle = "by Glu",
    ConfigurationSaving = {
@@ -565,9 +565,15 @@ local EnemyHealthButton = MainTab:CreateButton({
 -- =========================
 -- Auto Trinket Farm under See Health
 -- =========================
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
 local Trinkets = {"Copper Goblet", "Bronze Jar", "Golden Ring", "Gold Jar"}
 local AutoTrinketActive = false
- 
+
+-- Toggle Button
 local AutoTrinketToggle = MainTab:CreateToggle({
     Name = "Auto Trinket Farm",
     Default = false,
@@ -575,27 +581,50 @@ local AutoTrinketToggle = MainTab:CreateToggle({
         AutoTrinketActive = state
     end
 })
- 
+
+-- Function to simulate pressing E (for PC)
+local function simulateE()
+    if UserInputService.KeyboardEnabled then
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        wait(0.1)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.E, false, game)
+    end
+end
+
+-- Function to simulate touch (for Mobile)
+local function simulateTouch(part)
+    if UserInputService.TouchEnabled then
+        local pos = part.Position
+        game:GetService("VirtualInputManager"):SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 1)
+        wait(0.1)
+        game:GetService("VirtualInputManager"):SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 1)
+    end
+end
+
 -- AutoFarm loop
-game:GetService("RunService").RenderStepped:Connect(function()
+RunService.RenderStepped:Connect(function()
     if AutoTrinketActive then
-        local character = game.Players.LocalPlayer.Character
+        local character = LocalPlayer.Character
         if character and character:FindFirstChild("HumanoidRootPart") then
             local hrp = character.HumanoidRootPart
- 
+
             for _, name in ipairs(Trinkets) do
+                if not AutoTrinketActive then break end
+
                 local model = workspace:FindFirstChild(name)
                 if model and model:FindFirstChild("Part") then
-                    -- Teleport to the part
+                    -- Teleport above the trinket
                     hrp.CFrame = model.Part.CFrame + Vector3.new(0, 5, 0)
- 
-                    -- Wait until the part disappears (picked up)
+                    wait(0.3)
+
+                    -- Simulate collect input
+                    simulateE()
+                    simulateTouch(model.Part)
+
+                    -- Wait until the trinket is collected
                     repeat
                         wait(0.1)
                     until not model:FindFirstChild("Part") or not AutoTrinketActive
- 
-                    -- Break to move to next trinket
-                    if not AutoTrinketActive then break end
                 end
             end
         end
