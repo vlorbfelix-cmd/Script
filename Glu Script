@@ -170,6 +170,113 @@ local SeeHealthButton = MainTab:CreateButton({
     end,
 })
 -- ======================================
+-- Auto Block Toggle Button
+-- ======================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local AutoBlockActive = false
+local hitbox
+local playersInside = {}
+
+local AutoBlockButton = MainTab:CreateToggle({
+    Name = "Auto Block",
+    Default = false,
+    Callback = function(state)
+        AutoBlockActive = state
+
+        if hitbox then
+            hitbox:Destroy()
+            hitbox = nil
+            playersInside = {}
+        end
+
+        if AutoBlockActive then
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local hrp = character:WaitForChild("HumanoidRootPart")
+
+            -- Create hitbox
+            hitbox = Instance.new("Part")
+            hitbox.Size = Vector3.new(6, 6, 6)
+            hitbox.Anchored = true
+            hitbox.CanCollide = false
+            hitbox.Transparency = 0.8
+            hitbox.Color = Color3.fromRGB(255, 0, 0)
+            hitbox.Material = Enum.Material.Neon
+            hitbox.Name = "AutoBlockHitbox"
+            hitbox.Parent = workspace
+
+            -- Function to fire remote
+            local function fireBlock(state)
+                local args = {"Katana", "Block", state}
+                ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Async"):FireServer(unpack(args))
+            end
+
+            -- Temporary unblock function
+            local function temporaryUnblock(duration)
+                for p, _ in pairs(playersInside) do
+                    fireBlock(false)
+                end
+                playersInside = {}
+                task.delay(duration, function()
+                    -- After duration, next touches will re-add players automatically
+                end)
+            end
+
+            -- Expose globally so attacks can call it
+            _G.TemporaryUnblockHitbox = temporaryUnblock
+
+            -- Detect players entering hitbox
+            hitbox.Touched:Connect(function(hit)
+                local otherCharacter = hit.Parent
+                local otherPlayer = Players:GetPlayerFromCharacter(otherCharacter)
+                if otherPlayer and otherPlayer ~= LocalPlayer then
+                    playersInside[otherPlayer] = true
+                    fireBlock(true)
+                end
+            end)
+
+            -- Follow player and check distance
+            RunService.RenderStepped:Connect(function()
+                if not AutoBlockActive then return end
+                if hitbox and hrp then
+                    hitbox.CFrame = hrp.CFrame * CFrame.new(0, 0, -5)
+
+                    for p, _ in pairs(playersInside) do
+                        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                            local distance = (hitbox.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                            if distance > 6 then
+                                playersInside[p] = nil
+                                fireBlock(false)
+                            else
+                                fireBlock(true)
+                            end
+                        else
+                            playersInside[p] = nil
+                            fireBlock(false)
+                        end
+                    end
+                end
+            end)
+
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "Auto Block",
+                Text = "Enabled!",
+                Duration = 3
+            })
+        else
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "Auto Block",
+                Text = "Disabled!",
+                Duration = 3
+            })
+        end
+    end,
+})
+
+-- ======================================
 -- Kokushibo Health Tracker Button Only
 -- ======================================
 local KokushiboHealthActive = false
